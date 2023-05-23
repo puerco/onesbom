@@ -1,0 +1,12 @@
+
+syntax = "proto3";
+
+option go_package = "sbom/";
+
+package puerco.onesbom;
+
+message PersonIdentifier  {
+	string id = 1;
+	string type = 2;
+	string comment = 3;
+}
