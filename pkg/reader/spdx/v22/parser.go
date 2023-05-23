@@ -37,11 +37,12 @@ func (s *Parser) ParseJSON(opts *options.Options, f io.Reader) (*sbom.Document, 
 			FileName:         spdxDoc.Packages[i].Filename,
 			Description:      spdxDoc.Packages[i].Description,
 			DownloadLocation: spdxDoc.Packages[i].DownloadLocation,
-			URL:              spdxDoc.Packages[i].HomePage,
 			Summary:          spdxDoc.Packages[i].Summary,
-			Copyright:        spdxDoc.Packages[i].CopyrightText,
-			Comment:          spdxDoc.Packages[i].Comment,
 		}
+
+		p.URL = spdxDoc.Packages[i].HomePage
+		p.Copyright = spdxDoc.Packages[i].CopyrightText
+		p.Comment = spdxDoc.Packages[i].Comment
 
 		p.Name = spdxDoc.Packages[i].Name
 		p.SetID(strings.TrimPrefix(spdxDoc.Packages[i].ID, spdx23.IDPrefix))
