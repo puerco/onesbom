@@ -1,17 +1,14 @@
-
 syntax = "proto3";
 
 option go_package = "sbom/";
 
 package puerco.onesbom;
 
-/*
 message Relationship {
-	Source Node
-	Target *NodeList
-	Type   RelationshipType
+	string sourceid = 1;
+	ProtoNodeList target = 2;
+	string type = 3;
 }
-*/
 
 message ProtoNodeList {
     repeated string Identifiers = 1;
@@ -19,7 +16,7 @@ message ProtoNodeList {
 
 message Person {
 	string name              = 1;
-    bool is_org              = 2;
+    bool   is_org            = 2;
 	string email             = 3;
 	string url               = 4;
 	string phone             = 5; // CDX

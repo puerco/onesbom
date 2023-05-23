@@ -69,9 +69,3 @@ func (rt *RelationshipType) SPDX3() string {
 	}
 	return r
 }
-
-type Relationship struct {
-	Source Node
-	Target *NodeList
-	Type   RelationshipType
-}

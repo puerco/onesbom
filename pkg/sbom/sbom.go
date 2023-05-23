@@ -10,9 +10,12 @@ import (
 
 type Document struct {
 	Metadata      interface{}
-	Nodes         NodeList
-	Relationships []Relationship
+	NodeList      NodeList
 	rootElements  NodeList
+	nodes         map[string]*Node
+	Relationships []Relationship
+	Files         map[string]File
+	Packages      map[string]Package
 }
 
 // AddNode adds a node the the document
@@ -20,8 +23,10 @@ func (doc *Document) AddNode(n Node) error {
 	if n.ID() == "" {
 		return errors.New("node has empty ID string")
 	}
-	for _, testNode := range doc.Nodes {
-		if testNode.ID() == n.ID() {
+
+	// Check if the node is already in the doc
+	for _, testID := range doc.NodeList.Identifiers {
+		if testID == n.ID() {
 			return fmt.Errorf("node %s is already in the document", n.ID())
 		}
 	}
@@ -29,8 +34,15 @@ func (doc *Document) AddNode(n Node) error {
 	if err := n.linkDocument(doc); err != nil {
 		return fmt.Errorf("linking node to document")
 	}
+	doc.NodeList.Identifiers = append(doc.NodeList.Identifiers, n.ID())
 
-	doc.Nodes = append(doc.Nodes, n)
+	switch cn := n.(type) {
+	case *File:
+		doc.Files[cn.ID()] = *cn
+	case *Package:
+		doc.Packages[cn.ID()] = *cn
+	}
+	doc.nodes[n.ID()] = &n
 	return nil
 }
 
@@ -44,13 +56,13 @@ func (doc *Document) AddRelationshipFromIDs(sourceID, relType, destID string) er
 	if destID == "" {
 		return fmt.Errorf("destination ID cannot be an empty string")
 	}
-	var sourceElement, destElement Node
-	for i := range doc.Nodes {
-		if doc.Nodes[i].ID() == sourceID {
-			sourceElement = doc.Nodes[i]
+	var sourceElement, destElement *Node
+	for i := range doc.nodes {
+		if i == sourceID {
+			sourceElement = doc.nodes[i]
 		}
-		if doc.Nodes[i].ID() == destID {
-			destElement = doc.Nodes[i]
+		if i == destID {
+			destElement = doc.nodes[i]
 		}
 	}
 
@@ -62,11 +74,17 @@ func (doc *Document) AddRelationshipFromIDs(sourceID, relType, destID string) er
 		return fmt.Errorf("unable to find destination element with ID %s", sourceID)
 	}
 
-	return doc.AddRelationship(sourceElement, relType, &NodeList{destElement})
+	return doc.AddRelationship(
+		sourceElement, relType, &NodeList{
+			ProtoNodeList: ProtoNodeList{
+				Identifiers: []string{(*destElement).ID()},
+			},
+		},
+	)
 }
 
 // CreateRelationship adds a new relationship to the document
-func (doc *Document) AddRelationship(sourceElement Node, relType string, destElement *NodeList) error {
+func (doc *Document) AddRelationship(sourceElement *Node, relType string, destElement *NodeList) error {
 	if sourceElement == nil {
 		return errors.New("source element is nil")
 	}
@@ -75,19 +93,19 @@ func (doc *Document) AddRelationship(sourceElement Node, relType string, destEle
 	}
 
 	var foundSource, foundDest bool
-	for _, n := range doc.Nodes {
+	for id, n := range doc.nodes {
 		if sourceElement == n {
 			foundSource = true
 		}
 
 		// look for the target nodes
 		foundDestinations := 0
-		for _, sb := range *destElement {
-			if sb == n {
+		for _, sb := range destElement.Identifiers {
+			if sb == id {
 				foundDestinations++
 			}
 		}
-		if foundDestinations == len(*destElement) {
+		if foundDestinations == len(destElement.Identifiers) {
 			foundDest = true
 		}
 
@@ -104,10 +122,14 @@ func (doc *Document) AddRelationship(sourceElement Node, relType string, destEle
 		return errors.New("unable to find source element")
 	}
 
+	if destElement.Document == nil {
+		destElement.Document = doc
+	}
+
 	doc.Relationships = append(doc.Relationships, Relationship{
-		Source: sourceElement,
-		Target: destElement,
-		Type:   RelationshipType(relType),
+		SourceID: (*sourceElement).ID(),
+		Target:   destElement,
+		Type:     RelationshipType(relType),
 	})
 	return nil
 }
@@ -128,14 +150,18 @@ func (doc *Document) AddRootElement(node *Node) error {
 		return fmt.Errorf("new root node is empty")
 	}
 
-	for i := range doc.rootElements {
-		if doc.rootElements[i] == *node {
-			// Warn("node is already a root level node")
+	// If the node is not in the docs nodelist, add
+	if _, ok := doc.nodes[(*node).ID()]; !ok {
+		doc.nodes[(*node).ID()] = node
+	}
+
+	for _, id := range doc.rootElements.Identifiers {
+		if id == (*node).ID() {
 			return nil
 		}
 	}
 
-	doc.rootElements = append(doc.rootElements, *node)
+	doc.rootElements.Identifiers = append(doc.rootElements.Identifiers, (*node).ID())
 	return nil
 }
 
@@ -147,9 +173,9 @@ func (doc *Document) RootElements() NodeList {
 
 // GetElementByID gets an ID and returns a pointer to the element
 func (doc *Document) GetElementByID(id string) *Node {
-	for i := range doc.Nodes {
-		if doc.Nodes[i].ID() == id {
-			return &doc.Nodes[i]
+	for tid := range doc.nodes {
+		if tid == id {
+			return doc.nodes[tid]
 		}
 	}
 	return nil
