@@ -3,7 +3,14 @@
 
 package sbom
 
-type NodeList []Node
+type NodeList struct {
+	ProtoNodeList
+	Document *Document
+}
+
+func (nl *NodeList) Nodes() []*Node {
+
+}
 
 // Files returns all nodes in the nodelist which are Files.
 func (nl *NodeList) Files() []*File {
