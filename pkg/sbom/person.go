@@ -15,12 +15,6 @@ type Person struct {
 	Identifiers []PersonIdentifier // SPDX
 }
 
-type PersonIdentifier struct {
-	ID      string
-	Type    string
-	Comment string
-}
-
 // ToSPDX returns a rendering of the Person object as a SPDX 2.x string
 func (p *Person) ToSPDX2() string {
 	if p.Email == "" && p.Name == "" {
